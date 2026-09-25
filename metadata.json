@@ -1,0 +1,6 @@
+{
+  "name": "Apple Music - Stream & Studio",
+  "description": "Stream high-fidelity music with real-time lyrics, Lossless & Spatial Audio playback, custom playlists, and full studio upload pipeline.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

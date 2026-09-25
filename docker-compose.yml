@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  apple-music-platform:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./music_platform.db
+      - JWT_SECRET=apple-music-lossless-secret-2026
+    volumes:
+      - music_data:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  music_data:

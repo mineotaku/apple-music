@@ -1,0 +1,21 @@
+{
+  "name": "Apple Music — Lossless Stream & Studio",
+  "short_name": "Apple Music",
+  "description": "Stream Lossless & Spatial Audio with synced lyrics, procedural generator, and studio upload pipeline.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121212",
+  "theme_color": "#fa2d48",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["music", "entertainment", "audio"],
+  "screenshots": []
+}
