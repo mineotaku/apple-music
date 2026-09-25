@@ -1,6 +1,16 @@
 import { Song, Playlist } from '../types/music';
 
-const API_BASE = '/api';
+export const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL ||
+  import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') ||
+  (typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.includes('loca.lt'))
+    ? ''
+    : 'https://apple-music-mk3h.onrender.com');
+
+export const API_BASE = `${BACKEND_URL}/api`;
 
 export const api = {
   async getSongs(): Promise<Song[]> {
@@ -163,6 +173,26 @@ export const api = {
       body: JSON.stringify(songData),
     });
     if (!res.ok) throw new Error('Upload failed');
+    return await res.json();
+  },
+
+  async uploadSongFile(
+    file: File,
+    meta?: { title?: string; artist?: string; album?: string }
+  ): Promise<Song> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (meta?.title) formData.append('title', meta.title);
+    if (meta?.artist) formData.append('artist', meta.artist);
+    if (meta?.album) formData.append('album', meta.album);
+
+    // Call either direct backend or proxy upload-file endpoint
+    const targetUrl = BACKEND_URL ? `${BACKEND_URL}/api/songs/upload-file` : `${API_BASE}/songs/upload-file`;
+    const res = await fetch(targetUrl, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('File upload failed');
     return await res.json();
   },
 

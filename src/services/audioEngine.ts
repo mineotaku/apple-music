@@ -1,4 +1,5 @@
 import { Song } from '../types/music';
+import { BACKEND_URL } from './api';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 
@@ -112,8 +113,11 @@ export class AudioEngine {
 
     try {
       // Use HTTP streaming endpoint with Range request support
-      const streamUrl = `/api/songs/${song.id}/stream`;
-      if (this.audio.src !== window.location.origin + streamUrl) {
+      const rawStream = song.streamUrl || `/api/songs/${song.id}/stream`;
+      const streamUrl = rawStream.startsWith('http')
+        ? rawStream
+        : `${BACKEND_URL}${rawStream}`;
+      if (this.audio.src !== streamUrl) {
         this.audio.src = streamUrl;
       }
 

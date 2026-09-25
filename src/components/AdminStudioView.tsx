@@ -50,6 +50,7 @@ export const AdminStudioView: React.FC<AdminStudioViewProps> = ({
   const [duration, setDuration] = useState('210');
   const [isLossless, setIsLossless] = useState(true);
   const [isDolbyAtmos, setIsDolbyAtmos] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [audioBase64, setAudioBase64] = useState<string>('');
   const [audioFileName, setAudioFileName] = useState('');
   const [lyricsText, setLyricsText] = useState(
@@ -84,6 +85,7 @@ export const AdminStudioView: React.FC<AdminStudioViewProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedFile(file);
     setAudioFileName(file.name);
     // Auto-extract basic metadata from filename
     const cleanName = file.name.replace(/\.[^/.]+$/, '');
@@ -133,17 +135,35 @@ export const AdminStudioView: React.FC<AdminStudioViewProps> = ({
       .filter((l): l is { time: number; text: string } => Boolean(l));
 
     try {
-      const newSong = await api.uploadSong({
-        title,
-        artist,
-        album: album || 'Single',
-        genre,
-        duration: parseInt(duration, 10) || 180,
-        audioBase64,
-        isLossless,
-        isDolbyAtmos,
-        lyrics: parsedLyrics.length > 0 ? parsedLyrics : undefined,
-      });
+      let newSong;
+
+      // 1. If physical audio file selected, try high-speed binary pipeline first
+      if (selectedFile) {
+        try {
+          newSong = await api.uploadSongFile(selectedFile, {
+            title,
+            artist,
+            album: album || 'Single',
+          });
+        } catch (uploadErr) {
+          console.warn('Direct upload-file endpoint fell back to JSON base64 upload:', uploadErr);
+        }
+      }
+
+      // 2. Fallback to procedural / base64 JSON upload
+      if (!newSong) {
+        newSong = await api.uploadSong({
+          title,
+          artist,
+          album: album || 'Single',
+          genre,
+          duration: parseInt(duration, 10) || 180,
+          audioBase64,
+          isLossless,
+          isDolbyAtmos,
+          lyrics: parsedLyrics.length > 0 ? parsedLyrics : undefined,
+        });
+      }
 
       onSongAdded(newSong);
       setUploadSuccess(`"${newSong.title}" uploaded and deployed to streaming catalog successfully!`);
@@ -151,6 +171,7 @@ export const AdminStudioView: React.FC<AdminStudioViewProps> = ({
       setTitle('');
       setArtist('');
       setAlbum('');
+      setSelectedFile(null);
       setAudioFileName('');
       setAudioBase64('');
       loadStats();
