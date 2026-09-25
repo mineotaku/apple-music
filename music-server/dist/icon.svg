@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="appleMusicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff3b5c" />
+      <stop offset="45%" stop-color="#fa2d48" />
+      <stop offset="100%" stop-color="#d61036" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#fa2d48" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="115" fill="url(#appleMusicGrad)" filter="url(#glow)"/>
+  <path d="M352 116v190.2c0 24.3-17.5 45.8-41.5 49.3-30.8 4.5-56.5-19.3-56.5-49.5 0-25.2 20.5-46 46-46 6.8 0 13.3 1.5 19.2 4.2V192.4L208 214.2V350c0 24.3-17.5 45.8-41.5 49.3-30.8 4.5-56.5-19.3-56.5-49.5 0-25.2 20.5-46 46-46 6.8 0 13.3 1.5 19.2 4.2V155.6c0-14.8 11.2-27.2 26-29.2l128-17.3c14.7-2 27.8 9.3 27.8 24.1z" fill="#ffffff"/>
+</svg>

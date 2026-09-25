@@ -714,11 +714,13 @@ async function startServer() {
     });
   });
 
-  // Vite middleware in dev or static server in prod
-  if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
+  // Serve pre-built production bundle for instant loading and zero tunnel drops
+  const distDir = path.resolve(process.cwd(), 'dist');
+  if (fs.existsSync(distDir) && fs.existsSync(path.join(distDir, 'index.html'))) {
+    console.log('Serving optimized pre-built bundle from dist/ directory.');
+    app.use(express.static(distDir));
     app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.join(distDir, 'index.html'));
     });
   } else {
     const vite = await createViteServer({

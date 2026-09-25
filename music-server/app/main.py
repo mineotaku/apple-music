@@ -277,17 +277,46 @@ app.include_router(favorites.router)
 app.include_router(history.router)
 app.include_router(admin.router)
 
-@app.get("/")
-def root():
-    return {
-        "platform": "Apple Music Stream & Studio",
-        "status": "online",
-        "engine": "FastAPI + HTTP 206 Partial Content Range Streaming",
-        "docs": "/docs",
-        "endpoints": {
-            "songs": "/api/songs",
-            "playlists": "/api/playlists",
-            "search": "/api/search?q=starfall",
-            "admin": "/api/admin/stats"
+from fastapi.responses import FileResponse
+from fastapi import HTTPException
+
+# Locate dist directory
+dist_dir = None
+for candidate in [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "dist"),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), "dist"),
+    os.path.join(os.getcwd(), "dist"),
+    "dist"
+]:
+    if os.path.exists(candidate) and os.path.exists(os.path.join(candidate, "index.html")):
+        dist_dir = os.path.abspath(candidate)
+        break
+
+if dist_dir:
+    assets_dir = os.path.join(dist_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api") or full_path in ["docs", "openapi.json", "redoc"]:
+            raise HTTPException(status_code=404, detail="Not found")
+        file_path = os.path.join(dist_dir, full_path)
+        if full_path and os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(dist_dir, "index.html"))
+else:
+    @app.get("/")
+    def root():
+        return {
+            "platform": "Apple Music Stream & Studio",
+            "status": "online",
+            "engine": "FastAPI + HTTP 206 Partial Content Range Streaming",
+            "docs": "/docs",
+            "endpoints": {
+                "songs": "/api/songs",
+                "playlists": "/api/playlists",
+                "search": "/api/search?q=starfall",
+                "admin": "/api/admin/stats"
+            }
         }
-    }
