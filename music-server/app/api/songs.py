@@ -3,6 +3,7 @@ import base64
 import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File, Form
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.song import Song
@@ -47,7 +48,7 @@ def format_song_response(song: Song) -> dict:
         "coverGradient": gradients,
         "plays": song.plays,
         "lyrics": lyrics_parsed,
-        "streamUrl": f"/api/songs/{song.id}/stream"
+        "streamUrl": f"{os.getenv('SUPABASE_URL', 'https://vamhtrrmfvnthdujrgpv.supabase.co').rstrip('/')}/storage/v1/object/public/songs/{song.storage_key}" if song.storage_key else f"/api/songs/{song.id}/stream"
     }
 
 @router.get("")
@@ -68,7 +69,7 @@ def stream_song(song_id: str, request: Request, db: Session = Depends(get_db)):
     if not song:
         raise HTTPException(status_code=404, detail="Song not found")
 
-    content_type = song.mime_type or "audio/wav"
+    content_type = song.mime_type or "audio/mpeg"
 
     # If song has physical file on disk:
     if song.file_path and os.path.exists(song.file_path):
@@ -76,6 +77,12 @@ def stream_song(song_id: str, request: Request, db: Session = Depends(get_db)):
             size = os.path.getsize(song.file_path)
             return Response(status_code=200, headers={"Accept-Ranges": "bytes", "Content-Length": str(size), "Content-Type": content_type})
         return stream_audio_file(request, song.file_path, content_type)
+
+    # If song is stored in Supabase CDN:
+    if song.storage_key:
+        supabase_url = os.getenv("SUPABASE_URL", "https://vamhtrrmfvnthdujrgpv.supabase.co").rstrip("/")
+        public_url = f"{supabase_url}/storage/v1/object/public/songs/{song.storage_key}"
+        return RedirectResponse(url=public_url, status_code=307)
 
     # If cached procedural buffer exists:
     if song.id in audio_buffer_cache:

@@ -109,6 +109,8 @@ export interface Song {
   plays: number;
   lyrics: { time: number; text: string }[];
   audioBuffer?: Buffer;
+  filePath?: string;
+  streamUrl?: string;
 }
 
 const initialSongs: Song[] = [
@@ -273,22 +275,108 @@ const initialSongs: Song[] = [
   }
 ];
 
-let songsDatabase = [...initialSongs];
-let favoritesSet = new Set<string>(['song-1', 'song-3']);
+function loadLocalSongs(): Song[] {
+  const songsDir = path.resolve(process.cwd(), 'songs');
+  if (!fs.existsSync(songsDir)) return [];
+  const files = fs.readdirSync(songsDir).filter((f) => f.toLowerCase().endsWith('.mp3'));
+
+  const gradients: [string, string][] = [
+    ['#fa2d48', '#8b5cf6'],
+    ['#3b82f6', '#10b981'],
+    ['#f59e0b', '#ef4444'],
+    ['#8b5cf6', '#ec4899'],
+    ['#06b6d4', '#3b82f6'],
+    ['#f43f5e', '#fb923c'],
+    ['#10b981', '#06b6d4'],
+    ['#6366f1', '#a855f7'],
+    ['#ec4899', '#f43f5e'],
+    ['#14b8a6', '#3b82f6'],
+    ['#d946ef', '#8b5cf6'],
+    ['#f97316', '#ef4444'],
+  ];
+
+  return files.map((fname, idx) => {
+    const clean = fname
+      .replace(/\.mp3$/i, '')
+      .replace(/\s*-\s*MassTamilan(\.[a-zA-Z0-9]+)?/gi, '')
+      .replace(/MassTamilan(\.[a-zA-Z0-9]+)?/gi, '')
+      .replace(/^\d+\s*[-.]\s*/, '')
+      .trim();
+
+    let title = clean;
+    let artist = 'Anirudh Ravichander';
+    const album = 'Tamil Soundtracks & Hits';
+
+    if (clean.includes(' - ')) {
+      const parts = clean.split(' - ');
+      artist = parts[0].trim();
+      title = parts.slice(1).join(' - ').trim();
+    }
+
+    const safeName = fname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storageKey = `music/${safeName}`;
+
+    return {
+      id: `song-local-${idx + 1}`,
+      title,
+      artist,
+      artistId: `artist-${artist.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      album,
+      albumId: `album-${album.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+      duration: 215,
+      releaseYear: 2024,
+      genre: 'Tamil Soundtracks / Pop',
+      bitrate: '320 kbps ALAC',
+      codec: 'Apple Lossless',
+      isLossless: true,
+      isDolbyAtmos: true,
+      isAppleDigitalMaster: true,
+      coverGradient: gradients[idx % gradients.length],
+      plays: 85000 + ((idx * 3140) % 500000),
+      lyrics: [
+        { time: 0, text: `Now streaming ${title}` },
+        { time: 8, text: `By ${artist}` },
+        { time: 18, text: 'Lossless Spatial Audio Engine' },
+      ],
+      filePath: path.join(songsDir, fname),
+      streamUrl: `https://vamhtrrmfvnthdujrgpv.supabase.co/storage/v1/object/public/songs/${storageKey}`,
+    };
+  });
+}
+
+const localCatalog = loadLocalSongs();
+let songsDatabase = [...localCatalog, ...initialSongs];
+let favoritesSet = new Set<string>(['song-local-1', 'song-local-6', 'song-1', 'song-3']);
 let playHistory: { songId: string; playedAt: string }[] = [
-  { songId: 'song-1', playedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
-  { songId: 'song-3', playedAt: new Date(Date.now() - 1000 * 60 * 60).toISOString() },
-  { songId: 'song-2', playedAt: new Date(Date.now() - 1000 * 60 * 180).toISOString() },
+  { songId: 'song-local-1', playedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
+  { songId: 'song-local-6', playedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
+  { songId: 'song-1', playedAt: new Date(Date.now() - 1000 * 60 * 60).toISOString() },
 ];
 
 let userPlaylists = [
+  {
+    id: 'playlist-anirudh-essentials',
+    name: 'Anirudh Ravichander: Essentials',
+    description: 'The biggest chartbusters, viral anthems, and bass-heavy tracks.',
+    curator: 'Apple Music Tamil',
+    gradient: ['#fa2d48', '#8b5cf6'] as [string, string],
+    songIds: localCatalog.slice(0, 30).map((s) => s.id),
+  },
+  {
+    id: 'playlist-mass-energy',
+    name: 'High Energy & Mass Anthems',
+    description: 'Stadium anthems and pulse-pounding beats.',
+    curator: 'Apple Music Heavy Rotation',
+    gradient: ['#f59e0b', '#ef4444'] as [string, string],
+    songIds: localCatalog.slice(30, 60).map((s) => s.id),
+  },
   {
     id: 'playlist-1',
     name: 'Heavy Rotation',
     description: 'The tracks you have on constant replay right now.',
     curator: 'Apple Music Editorial',
     gradient: ['#fa2d48', '#ff7a00'] as [string, string],
-    songIds: ['song-1', 'song-3', 'song-2', 'song-5'],
+    songIds: ['song-local-1', 'song-local-2', 'song-1', 'song-3'],
   },
   {
     id: 'playlist-2',
@@ -304,8 +392,8 @@ let userPlaylists = [
     description: 'Downtempo soul, mellow beats, and warm nocturnal analog warmth.',
     curator: 'Curated by You',
     gradient: ['#8b5cf6', '#ec4899'] as [string, string],
-    songIds: ['song-3', 'song-6', 'song-2'],
-  }
+    songIds: ['song-local-4', 'song-local-5', 'song-6', 'song-2'],
+  },
 ];
 
 async function startServer() {
@@ -330,50 +418,99 @@ async function startServer() {
 
   // 3. HTTP Range Streaming endpoint (Section 6 & 10 of detailed plan)
   app.get('/api/songs/:id/stream', (req: Request, res: Response) => {
-    const song = songsDatabase.find(s => s.id === req.params.id);
-    if (!song || !song.audioBuffer) {
+    const song = songsDatabase.find((s) => s.id === req.params.id);
+    if (!song) {
       return res.status(404).json({ error: 'Audio track not found' });
     }
 
-    const audio = song.audioBuffer;
-    const totalLength = audio.length;
-    const range = req.headers.range;
+    // 1. If song has a physical file on disk (from the songs/ folder):
+    if (song.filePath && fs.existsSync(song.filePath)) {
+      const stat = fs.statSync(song.filePath);
+      const totalLength = stat.size;
+      const range = req.headers.range;
 
-    if (!range) {
-      // Stream complete content if no range requested
-      res.writeHead(200, {
-        'Content-Length': totalLength,
-        'Content-Type': 'audio/wav',
+      if (!range) {
+        res.writeHead(200, {
+          'Content-Length': totalLength,
+          'Content-Type': 'audio/mpeg',
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'public, max-age=3600',
+        });
+        fs.createReadStream(song.filePath).pipe(res);
+        return;
+      }
+
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 512 * 1024 - 1, totalLength - 1);
+
+      if (start >= totalLength || end >= totalLength || start > end) {
+        res.status(416).set({
+          'Content-Range': `bytes */${totalLength}`,
+        }).send('Requested range not satisfiable');
+        return;
+      }
+
+      const chunkSize = end - start + 1;
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${totalLength}`,
         'Accept-Ranges': 'bytes',
-        'Cache-Control': 'public, max-age=3600',
+        'Content-Length': chunkSize,
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'no-cache',
       });
-      res.end(audio);
+      fs.createReadStream(song.filePath, { start, end }).pipe(res);
       return;
     }
 
-    // Parse Range header e.g. "bytes=0-102400"
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 512 * 1024 - 1, totalLength - 1);
+    // 2. If procedural audio buffer exists:
+    if (song.audioBuffer) {
+      const audio = song.audioBuffer;
+      const totalLength = audio.length;
+      const range = req.headers.range;
 
-    if (start >= totalLength || end >= totalLength || start > end) {
-      res.status(416).set({
-        'Content-Range': `bytes */${totalLength}`
-      }).send('Requested range not satisfiable');
+      if (!range) {
+        res.writeHead(200, {
+          'Content-Length': totalLength,
+          'Content-Type': 'audio/wav',
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'public, max-age=3600',
+        });
+        res.end(audio);
+        return;
+      }
+
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 512 * 1024 - 1, totalLength - 1);
+
+      if (start >= totalLength || end >= totalLength || start > end) {
+        res.status(416).set({
+          'Content-Range': `bytes */${totalLength}`,
+        }).send('Requested range not satisfiable');
+        return;
+      }
+
+      const chunkSize = end - start + 1;
+      const chunk = audio.subarray(start, end + 1);
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${totalLength}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': 'audio/wav',
+        'Cache-Control': 'no-cache',
+      });
+      res.end(chunk);
       return;
     }
 
-    const chunkSize = end - start + 1;
-    const chunk = audio.subarray(start, end + 1);
+    // 3. Fallback redirect to Supabase CDN if available
+    if (song.streamUrl && song.streamUrl.startsWith('http')) {
+      return res.redirect(song.streamUrl);
+    }
 
-    res.writeHead(206, {
-      'Content-Range': `bytes ${start}-${end}/${totalLength}`,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunkSize,
-      'Content-Type': 'audio/wav',
-      'Cache-Control': 'no-cache',
-    });
-    res.end(chunk);
+    res.status(404).json({ error: 'Audio track not found' });
   });
 
   // 4. Upload / Create song (Admin pipeline)

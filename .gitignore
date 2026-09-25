@@ -9,3 +9,5 @@ coverage/
 __pycache__/
 *.db
 .system_generated/
+songs/
+uploads/
